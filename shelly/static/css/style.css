@@ -1,0 +1,37 @@
+body {
+    font-family: sans-serif;
+}
+#main {
+    text-align: center;
+    background-color: antiquewhite;
+    padding: 5pt;
+    border-radius: 10px;
+    margin-left: 20%;
+    margin-right: 20%;
+}
+.button {
+    padding: 0; /* Remove padding to center text properly */
+    margin: 10px;
+    font-size: 16px;
+    border: none; /* Remove border */
+    border-radius: 50%; /* Make the button circular */
+    width: 50px; /* Set width to make it circular */
+    height: 50px; /* Set height to make it circular */
+    /* display: flex; /* Use Flexbox */
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+    cursor: pointer; /* Pointer cursor on hover */
+}
+.toggle {
+    color: antiquewhite;
+}
+.on {
+    box-shadow: 0 0 10px 5px rgba(19, 139, 179, 0.8); /* Light blue shadow */
+    background-color: greenyellow; /* Dark blue background */
+    color: black;
+}
+
+.off {
+    background-color: #00008B; /* Dark blue background */
+    color: white; /* White text color */
+}
