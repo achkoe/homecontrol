@@ -1,10 +1,10 @@
 [Unit]
-Description=Read and archive data from a Bresser weather station
+Description=Control garden plug
 
 [Service]
 User=root
 WorkingDirectory=/home/pi/homecontrol/shelly
-ExecStart=/usr/bin/bash -c 'cd /home/pi/homecontrol/shelly/ && source /home/pi/vbresser/bin/activate && python shellyproxy.py'
+ExecStart=/usr/bin/bash -c 'cd /home/pi/homecontrol/shelly/ && source /home/pi/homecontrol/.venv/bin/activate && python shellyproxy.py'
 Restart=always
 RestartSec=3
 
