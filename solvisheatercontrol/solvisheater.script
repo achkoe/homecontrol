@@ -1,0 +1,54 @@
+// Script to set switch 1 always to the same state as switch 0
+print("Clone_Q1_to_Q2");
+Shelly.call("Switch.Set", {id: 0, on: false});
+Shelly.call("Switch.Set", {id: 1, on: false});
+
+Shelly.addEventHandler(
+  function(event, ud) {
+    if (event.info.component === "switch:0") {
+      let r = Shelly.getComponentStatus("switch:0");
+      // print("set switch:1 -> ", r.output);      
+      Shelly.call("Switch.Set", {id: 1, on: r.output});
+    };
+  }, null
+);
+
+let THRESHOLD = -100;           // watts
+let lastState = null;         // null, "below", "above"
+let TARGET_URL = "http://192.168.178.98:5020/power"; // Python server IP
+
+Shelly.addEventHandler(function (event) {
+  if (event.component !== "switch:0" || event.id !== 0) return;
+  let status = Shelly.getComponentStatus("switch:0");
+
+  let power = status.apower;
+  let currentState = power <= THRESHOLD ? "above" : "below";
+  print("power ->", status.apower, " lS -> ", lastState, " cS -> ", currentState);
+  
+  if (currentState !== lastState) {
+    lastState = currentState;
+  
+    let payload = {
+      device: Shelly.getDeviceInfo().id,
+      channel: 1,
+      power: power,
+      threshold: THRESHOLD,
+      state: currentState
+    };
+
+    Shelly.call(
+      "HTTP.POST",
+      {
+        url: TARGET_URL,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        timeout: 5   // seconds
+      },
+      function (result, error_code, error_msg) {
+        if (error_code !== 0) {
+          print("HTTP POST failed:", error_code, error_msg);
+        } 
+      }
+    );
+  }
+});
