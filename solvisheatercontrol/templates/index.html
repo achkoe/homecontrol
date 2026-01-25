@@ -10,11 +10,11 @@
     <script>data={{ data | tojson }};</script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     <div id="main">
-        <h1> {{ title }}</h1>
-        <table id="table">
-            <th>Time</th>
-            <th>Power</th>
-        </table>
+    <h1> {{ title }}</h1>
+        <pre id="result">
+{{ data }}
+        </pre>
+        <button onClick="window.location.reload();">Refresh Page</button>
     </div>
 </body>
 </html>

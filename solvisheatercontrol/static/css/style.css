@@ -1,9 +1,25 @@
 * { font-family: sans-serif;}
-th, td {
-  border: 1px solid black;
-  padding: 2px 10px;
-  text-align: left;
+
+button {
+  width: 20em;
+  padding: 10pt;
+  background-color: lightskyblue;
+  border-radius: 5pt;
+  font-size: larger;
 }
-table {
-  border-collapse: collapse;
+
+#main {
+  background-color: #eee;
+  margin: auto;
+  width: fit-content;
+  border: none;
+  border-radius: 5pt;
+}
+
+h1 {
+  text-align: center;
+  background-color: aquamarine;
+}
+#result {
+  padding-left: 2em;
 }

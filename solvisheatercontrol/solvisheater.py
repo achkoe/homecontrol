@@ -1,4 +1,6 @@
 import sqlite3
+import requests
+import json
 import datetime
 import time
 from flask import Flask, request, jsonify, render_template
@@ -6,6 +8,7 @@ from common import DBPATH, DBFIELDS, DBVALUES
 
 
 app = Flask(__name__)
+ipaddress = "192.168.178.137"
 
 
 @app.route("/power", methods=["POST"])
@@ -25,10 +28,13 @@ def power_event():
 
 @app.route("/get", methods=["GET"])
 def get_power():
-    connection = sqlite3.connect(DBPATH)
-    cursor = connection.cursor()
-    cursor.execute("SELECT * FROM heater ORDER BY time DESC")
-    return {"status": "ok", "data": cursor.fetchall()}
+    url = f"http://{ipaddress}/rpc"
+    payload = {"id":1,"method":"Shelly.GetStatus"}
+    r = requests.post(url, data=json.dumps(payload))
+    r = r.json()
+    r = r["result"]["switch:0"]
+    r = json.dumps(r, indent=4)
+    return r
 
 
 @ app.route("/")
@@ -38,21 +44,4 @@ def index():
     
 
 if __name__ == "__main__":
-    # sqlite stuff
-    print(DBPATH)
-    connection = sqlite3.connect(DBPATH)
-    cursor = connection.cursor()
-    s = ",".join(f"{key} {DBFIELDS[key]}" for key in DBFIELDS)    
-    cursor.execute(f"CREATE TABLE IF NOT EXISTS heater ({s})")
-    s = ",".join(DBFIELDS)
-    # avoid writing duplicate items
-    cursor.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS uniquedata ON heater ({s})")
-    # create trigger to delete items older than 1 year
-    cursor.execute("""CREATE TRIGGER IF NOT EXISTS deletelast30days AFTER INSERT ON heater
-                   BEGIN
-                   DELETE FROM heater WHERE (julianday('now') - julianday(time, 'unixepoch')) > 30;
-                   END
-                   """)
-    connection.commit()
-
     app.run(host="0.0.0.0", port=5020, debug=True)
