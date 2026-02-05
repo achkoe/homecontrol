@@ -1,12 +1,21 @@
+"""Runner for garden valve."""
 import sys
 import pathlib
 import json
 import sqlite3
 import time
 import datetime
+import logging
+import os
+from configparser import ConfigParser
+import argparse
+from collections import deque
+from pprint import pformat
+import requests
+from dotenv import load_dotenv
+from base import LOGGER, CONFIGURATION_NAME, LOGGING_NAME
 
-
-CONFIGURATION_NAME = "configuration.json"
+load_dotenv(override=True)
 
 
 def dict_factory(cursor, row):
@@ -14,23 +23,11 @@ def dict_factory(cursor, row):
     return {key: value for key, value in zip(fields, row)}
 
 
-def _make_integer_time(timestr: str) -> int:
-    hms = (int(item) for item in timestr.split(":"))
-    rval = 0
-    for item, factor in zip(hms, (60 * 60, 60, 1)):
-        rval += item * factor
-    return rval
-
-
 def load_configuration():
     configuration_path = pathlib.Path(__file__).parent.joinpath(CONFIGURATION_NAME)
     with configuration_path.open("r") as fh:
         configuration = json.load(fh)
-    for index, on_off_time in enumerate(configuration["on_off_times"]):
-        for key in ["on", "off"]:
-            the_time = on_off_time[key]
-            configuration["on_off_times"][index][f"{key}_i"] = _make_integer_time(the_time)
-    print(configuration)
+    LOGGER.debug(f"configuration -> {configuration}")
     return configuration
 
 
@@ -45,36 +42,123 @@ def calculate_rain_in_last_hours(dbpath, number_hours):
     cursor.execute(f"SELECT time, rain_mm FROM weather WHERE time >= ? ORDER BY time ASC LIMIT 1", (hours_before, ))
     item_at_start = cursor.fetchone()
     item_at_start["time"] = datetime.datetime.fromtimestamp(item_at_start["time"])
-    print(item_at_end)
-    print(item_at_start)
+    LOGGER.info(item_at_end)
+    LOGGER.info(item_at_start)
     rain_mm = item_at_end["rain_mm"] - item_at_start["rain_mm"]
     return rain_mm
     
     
-def run():
+def run(configuration: dict, state: str) -> None:
+    logfile = pathlib.Path(__file__).parent.joinpath(LOGGING_NAME)
+    try:
+        with logfile.open("r") as fh:
+            logrecord = deque(json.load(fh), 10)
+    except Exception:
+        logrecord = deque(maxlen=10)
+    
+    now = datetime.datetime.now().isoformat()
+    if state == "enable":
+        # using a valve which is normally open
+        valve_close = configuration["rain_mm"] > configuration["minimum_rain_amount_in_millimeters_for_valve_close"]
+    else:
+        valve_close = False
+    
+    url = "http://{0}/button/relais_{1}/press".format(os.environ["switchaddress"], "on" if valve_close else "off")
+    r = requests.post(url)
+    
+    logrecord.appendleft(dict(close=valve_close, rain_mm=configuration["rain_mm"], time=now, status=r.status_code))
+    with logfile.open("w") as fh:
+        json.dump(list(logrecord), fh, indent=4)
+    
+        
+def setup():
     configuration = load_configuration()
-    sys.path.append(configuration["path_to_weatherstation"])
+
+    path = os.environ["weatherstation"]
+    assert path is not None, "ERROR: environment variable 'weatherstation' with path to weatherstation folder is missing "
+    sys.path.insert(0, path)
     from common import DBPATH
     sys.path.pop()
-    rain_mm = calculate_rain_in_last_hours(DBPATH, configuration["calculate_rain_amount_over_hours"])
-    print(rain_mm)
+    configuration["path_to_weatherstation_db"] = path
+    configuration["rain_mm"] = calculate_rain_in_last_hours(DBPATH, configuration["calculate_rain_amount_over_hours"])
     
-    while True:
-        time_struct = time.localtime()
-        current_time = time_struct.tm_hour * 60 * 60 + time_struct.tm_min * 60 + time_struct.tm_sec
-        for index, on_off_time in enumerate(configuration["on_off_times"]):
-            on_i = on_off_time["on_i"]
-            off_i = on_off_time["off_i"]
-            invert = on_i > off_i
-            if invert:
-                on_i, off_i = off_i, on_i
-            switch_on = invert ^ (current_time >= on_i and current_time <= off_i)
-            
-            print(f"{index} -> {switch_on}")
+    return configuration
+    
 
-        time.sleep(10)    
+def write_systemctl_files(configuration):
+    files = []
+    contents = []
+    contents.append("[Unit]")
+    contents.append("Description=Timer for garden valve enable")
+    contents.append("\n[Install]")
+    contents.append("WantedBy=timers.target")
+    contents.append("\n[Timer]")
+    for on_run_time in configuration["on_run_times"]:
+        contents.append("OnCalendar=*-*-* {0}:{1}:00".format(*on_run_time["on"].split(":")))
+    contents.append("Unit=gardenvalve-enable.service")
+    contents.append("Persistent=true")
+    with open("gardenvalve-enable.timer", "w") as fh:
+        fh.write("\n".join(contents))
+    print(f"{fh.name} written")
+    files.append(fh.name)
+    
+    contents = []
+    contents.append("[Unit]")
+    contents.append("Description=Timer for garden valve disable")
+    contents.append("\n[Install]")
+    contents.append("WantedBy=timers.target")
+    contents.append("\n[Timer]")
+    for on_run_time in configuration["on_run_times"]:
+        hm = on_run_time["on"].split(":", maxsplit=1)
+        on_time = datetime.datetime(year=2000, month=1, day=1, hour=int(hm[0]), minute=int(hm[1]))
+        off_time = datetime.datetime.fromtimestamp(on_time.timestamp() + on_run_time["for"] * 60)
+        contents.append("OnCalendar=*-*-* {0}:{1}:00".format(off_time.hour, off_time.minute))
+    contents.append("Unit=gardenvalve-disable.service")
+    contents.append("Persistent=true")
+    with open("gardenvalve-disable.timer", "w") as fh:
+        fh.write("\n".join(contents))
+    print(f"{fh.name} written")
+    files.append(fh.name)
         
+    contents = []
+    contents.append("[Unit]")
+    contents.append("Description=Controller for garden valve enable")
+    contents.append("\n[Service]")
+    contents.append("WorkingDirectory={0}".format(str(pathlib.Path(__file__).parent)))
+    contents.append("ExecStart=python3 {0} --state enable".format(str(pathlib.Path(__file__))))
+    with open("gardenvalve-enable.service", "w") as fh:
+        fh.write("\n".join(contents))
+    print(f"{fh.name} written")
+    files.append(fh.name)
 
+    contents = []
+    contents.append("[Unit]")
+    contents.append("Description=Controller for garden valve disable")
+    contents.append("\n[Service]")
+    contents.append("WorkingDirectory={0}".format(str(pathlib.Path(__file__).parent)))
+    contents.append("ExecStart=python3 {0} --state disable".format(str(pathlib.Path(__file__))))
+    with open("gardenvalve-disable.service", "w") as fh:
+        fh.write("\n".join(contents))
+    print(f"{fh.name} written")
+    files.append(fh.name)
     
+    print("\nCopy the generated files to /etc/system/system")
+    print("sudo cp {} /etc/systemd/system/".format(" ".join(files)))
+    print("sudo systemctl daemon-reload")
+    print("sudo systemctl start {}".format(" ".join(files)))
+    print("sudo systemctl status gardenvalve-enable.timer gardenvalve-disable.timer gardenvalve-enable.service gardenvalve-disable.service")
+    print("sudo systemctl enable {}".format(" ".join(files)))
+
+
 if __name__ == "__main__":
-    run()
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--state", dest="state", choices=["enable", "disable"], help="enable or disable valve")
+    parser.add_argument("-w", "--write", action="store_true", help="write unit files for systemctl")
+    args = parser.parse_args()
+    configuration = setup()
+    LOGGER.info(pformat(configuration))
+    if args.write is True:
+        write_systemctl_files(configuration)
+    else:
+        LOGGER.info(f"configuration -> {pformat(configuration)}")
+        run(configuration, args.state)

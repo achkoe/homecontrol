@@ -1,10 +1,9 @@
 {
-    "on_off_times": [
-        {"on": "6:29", "off": "7:01"},
-        {"on": "16:29", "off": "17:01"},
-        {"on": "19:46", "off": "19:47"}
+    "on_run_times": [
+        {"on": "6:29", "for": 32},
+        {"on": "12:20", "for": 2},
+        {"on": "19:46", "for": 32}
     ],
     "calculate_rain_amount_over_hours": 2000,
-    "minimum_rain_amount_in_millimeters_for_valve_off": 20,
-    "path_to_weatherstation": "/home/pi/weatherstation"
+    "minimum_rain_amount_in_millimeters_for_valve_close": 20
 }
