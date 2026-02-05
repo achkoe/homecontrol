@@ -9,10 +9,15 @@
     
     <body>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-    <h1>Garden Valve Monitor {{version}}</h1>
-    <div id="valve"></div>
-    <div><p id="history"></p></div>
-
+    <div id="main">
+        <h1>Garden Valve Monitor {{version}}</h1>
+        <button id="valve" onclick="press()">Open</button>
+        <div>
+            <table id="history">
+            </table>    
+        </div>
+    </div>
+    
 </body>    
 
 </html>

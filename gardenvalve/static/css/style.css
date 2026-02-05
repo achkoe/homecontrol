@@ -1,0 +1,62 @@
+* {
+    font-family: sans-serif;
+}
+
+.center {
+    text-align: center;
+}
+
+.left {
+    text-align: left;
+}
+
+#main {
+    text-align: center;
+    background-color: antiquewhite;
+    padding: 5pt;
+    border-radius: 10px;
+    margin-left: 20%;
+    margin-right: 20%;
+}
+
+button {
+    background-color: aquamarine;
+    padding: 10pt; 
+    margin-bottom: 10px;
+    font-size: 16px;
+    border: solid 1pt black;
+    border-radius: 5pt; 
+    width: 100%; 
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+    cursor: pointer; /* Pointer cursor on hover */
+}
+
+table {
+    border-collapse: collapse;
+    border: 1px solid #333;
+    width: 100%;
+}
+
+th, td {
+    text-align: left;
+    padding: 2pt 10pt;
+}
+
+th {
+    border-bottom: 1pt solid #333;
+}
+
+.error {
+    background-color: deeppink;
+
+}
+
+.yes {
+    background-color: green;
+}
+
+.no {
+    background-color: red;
+    color: white;
+}

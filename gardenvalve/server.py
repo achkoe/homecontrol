@@ -9,7 +9,8 @@ import queue
 import logging
 from collections import deque
 from flask import Flask, render_template, request
-from common import LOGGER, CONFIGURATION_NAME
+from base import LOGGER, CONFIGURATION_NAME, LOGGING_NAME, VERSION
+from controller import setup, run
 
 APP = Flask(__name__)
 
@@ -20,17 +21,17 @@ def index():
 
 @APP.route("/get")
 def get():
-    global INQUEUE, OUTQUEUE
-    rval = {"status": "ok"}
-    INQUEUE.put("get")
-    try:
-        response = OUTQUEUE.get(block=False)
-        print(f"response -> {response}")
-        rval.update({"history": response})
-    except queue.Empty:
-        rval["status"] = "error"
-        
-    return rval
+    with pathlib.Path(__file__).parent.joinpath(LOGGING_NAME).open("r") as fh:
+        valve_log = json.load(fh)
+    return valve_log
+
+@APP.route("/set", methods=("POST", ))
+def set():
+    state = request.get_json()
+    LOGGER.info(f"state -> {state}")
+    configuration = setup()
+    run(configuration, "enable" if state["state"] == "false" else "disable")
+    return state
 
 
 if __name__ == "__main__":
