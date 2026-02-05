@@ -52,7 +52,7 @@ function populateHistory(data) {
         }
     }
     for (const item of data) { 
-        eValveButton.innerText = item["close"] ? "Press to open" : "Press to close";
+        eValveButton.innerText = item["close"] ? "Press to open valve" : "Press to close valve";
         eValveButton.value = item["close"];
         break;
     }
