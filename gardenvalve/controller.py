@@ -92,7 +92,6 @@ def setup(configuration):
     sys.path.insert(0, path)
     from common import DBPATH
     sys.path.pop()
-    configuration["path_to_weatherstation_db"] = path
     configuration["rain_mm"] = calculate_rain_in_last_hours(DBPATH, configuration["calculate_rain_amount_over_hours"])
     return configuration
     
@@ -154,12 +153,13 @@ def write_systemctl_files(configuration):
     print(f"{fh.name} written")
     files.append(fh.name)
     
-    print("\nCopy the generated files to /etc/system/system")
-    print("sudo cp {} /etc/systemd/system/".format(" ".join(files)))
-    print("sudo systemctl daemon-reload")
-    print("sudo systemctl start {}".format(" ".join(files)))
-    print("sudo systemctl status gardenvalve-enable.timer gardenvalve-disable.timer gardenvalve-enable.service gardenvalve-disable.service")
-    print("sudo systemctl enable {}".format(" ".join(files)))
+    with pathlib.Path(__file__).parent.joinpath("_setup.sh").open("w") as fh:
+        print("sudo cp {} /etc/systemd/system/".format(" ".join(files)), file=fh)
+        print("sudo systemctl daemon-reload", file=fh)
+        print("sudo systemctl start {}".format(" ".join(files)), file=fh)
+        print("sudo systemctl status gardenvalve-enable.timer gardenvalve-disable.timer gardenvalve-enable.service gardenvalve-disable.service", file=fh)
+        print("sudo systemctl enable {}".format(" ".join(files)), file=fh)
+    print(f"\nYou can execute now 'sudo bash {fh.name}'")
 
 
 def die(message):
