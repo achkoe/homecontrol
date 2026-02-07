@@ -27,14 +27,11 @@ import argparse
 from collections import deque
 from pprint import pformat
 import requests
-from dotenv import load_dotenv
 from base import LOGGER, CONFIGURATION_NAME, LOGGING_NAME
 
-load_dotenv(override=True)
 
-
-CONFIGURATION_KEYS = ["switchaddress", "weatherstation", "on_run_times", "calculate_rain_amount_over_hours", "minimum_rain_amount_in_millimeters_for_valve_close"].sort()
-CONFIGURATION_KEYS_ON_RUN_TIMES_KEYS = ["on", "for"].sort()
+CONFIGURATION_KEYS = sorted(["switchaddress", "weatherstation", "on_run_times", "calculate_rain_amount_over_hours", "minimum_rain_amount_in_millimeters_for_valve_close"])
+CONFIGURATION_KEYS_ON_RUN_TIMES_KEYS = sorted(["on", "for"])
 
 
 def dict_factory(cursor, row):
@@ -47,7 +44,6 @@ def load_configuration():
     with configuration_path.open("r") as fh:
         configuration = json.load(fh)
     LOGGER.debug(f"configuration -> {configuration}")
-    
     return configuration
 
 
@@ -91,17 +87,13 @@ def run(configuration: dict, state: str) -> None:
         json.dump(list(logrecord), fh, indent=4)
     
         
-def setup():
-    configuration = load_configuration()
-
-    path = os.environ["weatherstation"]
-    assert path is not None, "ERROR: environment variable 'weatherstation' with path to weatherstation folder is missing "
+def setup(configuration):
+    path = configuration["weatherstation"]
     sys.path.insert(0, path)
     from common import DBPATH
     sys.path.pop()
     configuration["path_to_weatherstation_db"] = path
     configuration["rain_mm"] = calculate_rain_in_last_hours(DBPATH, configuration["calculate_rain_amount_over_hours"])
-    
     return configuration
     
 
@@ -181,17 +173,21 @@ if __name__ == "__main__":
     parser.add_argument("--state", dest="state", choices=["enable", "disable"], help="enable or disable valve")
     parser.add_argument("-w", "--write", action="store_true", help="write unit files for systemctl")
     args = parser.parse_args()
-    configuration = setup()
-    LOGGER.info(pformat(configuration))
+    configuration = load_configuration()
 
     # check keys of configuration
     keys = sorted(list(configuration.keys()))
+    print(keys)
+    print(CONFIGURATION_KEYS)
     if keys != CONFIGURATION_KEYS:
         die("ERROR: configuration keys does not match")
     for item in configuration["on_run_times"]:
         keys = sorted(list(item.keys()))
         if keys != CONFIGURATION_KEYS_ON_RUN_TIMES_KEYS:
             die("ERROR: keys of 'on_run_times' in configuration does not match")
+
+    configuration = setup(configuration)
+    LOGGER.info(pformat(configuration))
 
     if args.write is True:
         write_systemctl_files(configuration)
