@@ -79,8 +79,10 @@ def run(configuration: dict, state: str) -> None:
     else:
         valve_close = False
     
-    url = "http://{0}/button/relais_{1}/press".format(configuration["switchaddress"], "on" if valve_close else "off")
+    url = "http://{0}/switch/output/turn_{1}".format(configuration["switchaddress"], "on" if valve_close else "off")
     r = requests.post(url)
+    print(url)
+    print(r.status_code)
     
     logrecord.appendleft(dict(close=valve_close, rain_mm=configuration["rain_mm"], time=now, status=r.status_code))
     with logfile.open("w") as fh:
