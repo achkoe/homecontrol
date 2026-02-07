@@ -1,4 +1,19 @@
-"""Runner for garden valve."""
+"""Runner for garden valve.
+
+Configuration in file configuration.json should look like this:
+{
+    "on_run_times": [
+        {"on": "9:00", "for": 2},
+        {"on": "10:55", "for": 2}
+    ],
+    "calculate_rain_amount_over_hours": 2000,
+    "minimum_rain_amount_in_millimeters_for_valve_close": 20,
+    "switchaddress": "192.168.178.46",
+    "weatherstation": "/home/pi/weatherstation/"
+}
+"""
+
+
 import sys
 import pathlib
 import json
@@ -18,6 +33,10 @@ from base import LOGGER, CONFIGURATION_NAME, LOGGING_NAME
 load_dotenv(override=True)
 
 
+CONFIGURATION_KEYS = ["switchaddress", "weatherstation", "on_run_times", "calculate_rain_amount_over_hours", "minimum_rain_amount_in_millimeters_for_valve_close"].sort()
+CONFIGURATION_KEYS_ON_RUN_TIMES_KEYS = ["on", "for"].sort()
+
+
 def dict_factory(cursor, row):
     fields = [column[0] for column in cursor.description]
     return {key: value for key, value in zip(fields, row)}
@@ -28,6 +47,7 @@ def load_configuration():
     with configuration_path.open("r") as fh:
         configuration = json.load(fh)
     LOGGER.debug(f"configuration -> {configuration}")
+    
     return configuration
 
 
@@ -94,7 +114,7 @@ def write_systemctl_files(configuration):
     contents.append("WantedBy=timers.target")
     contents.append("\n[Timer]")
     for on_run_time in configuration["on_run_times"]:
-        contents.append("OnCalendar=*-*-* {0}:{1}:00".format(*on_run_time["on"].split(":")))
+        contents.append("OnCalendar=*-*-* {0}:{1:02}:00".format(*on_run_time["on"].split(":")))
     contents.append("Unit=gardenvalve-enable.service")
     contents.append("Persistent=true")
     with open("gardenvalve-enable.timer", "w") as fh:
@@ -112,7 +132,7 @@ def write_systemctl_files(configuration):
         hm = on_run_time["on"].split(":", maxsplit=1)
         on_time = datetime.datetime(year=2000, month=1, day=1, hour=int(hm[0]), minute=int(hm[1]))
         off_time = datetime.datetime.fromtimestamp(on_time.timestamp() + on_run_time["for"] * 60)
-        contents.append("OnCalendar=*-*-* {0}:{1}:00".format(off_time.hour, off_time.minute))
+        contents.append("OnCalendar=*-*-* {0}:{1:02}:00".format(off_time.hour, off_time.minute))
     contents.append("Unit=gardenvalve-disable.service")
     contents.append("Persistent=true")
     with open("gardenvalve-disable.timer", "w") as fh:
@@ -150,13 +170,29 @@ def write_systemctl_files(configuration):
     print("sudo systemctl enable {}".format(" ".join(files)))
 
 
+def die(message):
+    print(f"\n{message}")
+    print("\n".join(__doc__.splitlines()[1:]))
+    sys.exit(1)
+    
+    
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0], epilog="\n".join(__doc__.splitlines()[1:]), formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--state", dest="state", choices=["enable", "disable"], help="enable or disable valve")
     parser.add_argument("-w", "--write", action="store_true", help="write unit files for systemctl")
     args = parser.parse_args()
     configuration = setup()
     LOGGER.info(pformat(configuration))
+
+    # check keys of configuration
+    keys = sorted(list(configuration.keys()))
+    if keys != CONFIGURATION_KEYS:
+        die("ERROR: configuration keys does not match")
+    for item in configuration["on_run_times"]:
+        keys = sorted(list(item.keys()))
+        if keys != CONFIGURATION_KEYS_ON_RUN_TIMES_KEYS:
+            die("ERROR: keys of 'on_run_times' in configuration does not match")
+
     if args.write is True:
         write_systemctl_files(configuration)
     else:

@@ -1,0 +1,11 @@
+{
+    "on_run_times": [
+        {"on": "9:00", "for": 2},
+        {"on": "10:55", "for": 2}
+    ],
+    "calculate_rain_amount_over_hours": 2000,
+    "minimum_rain_amount_in_millimeters_for_valve_close": 20,
+    "switchaddress": "192.168.0.46",
+    "weatherstation": "/home/pi/weatherstation/"
+
+}
