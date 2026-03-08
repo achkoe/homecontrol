@@ -2,7 +2,7 @@
 import sqlite3
 import datetime
 import argparse
-from common import DBPATH, DBFIELDS
+from common import DBPATH, DBFIELDS, TABLENAME
 
 
 def dict_factory(cursor, row):
@@ -11,7 +11,7 @@ def dict_factory(cursor, row):
 
 
 def powerperday(cursor):
-    cursor.execute("SELECT * FROM heater ORDER BY time ASC")
+    cursor.execute(f"SELECT * FROM {TABLENAME} ORDER BY time ASC")
     item = cursor.fetchone()
     if item is None:
         return  # FIXME
@@ -45,7 +45,7 @@ def powerperday(cursor):
             print(f"{previous_year}-{previous_month}-{previous_day} -> {work}")
             work = 0.0
         
-    print(f"{previous_year}-{previous_month}-{previous_day} -> {work} kWh")
+    print(f"{previous_year}-{previous_month:02}-{previous_day:02} -> {work} kWh")
     
     
     
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     connection.row_factory = dict_factory
     cursor = connection.cursor()
         
-    cursor.execute("SELECT * FROM heater ORDER BY time DESC")
+    cursor.execute(f"SELECT * FROM {TABLENAME} ORDER BY time DESC")
     while True:
         item = cursor.fetchone()
         if item is None:

@@ -1,27 +1,16 @@
-let THRESHOLD = 100;           // watts
-let lastState = null;         // null, "below", "above"
 let TARGET_URL = "http://192.168.178.98:5020/power"; // Python server IP
-
+ 
 Shelly.addEventHandler(function (event) {
   if (event.component !== "switch:0" || event.id !== 0) return;
   let status = Shelly.getComponentStatus("switch:0");
-
-  let power = status.apower;
-  let currentState = power <= THRESHOLD ? "above" : "below";
-  print("power ->", status.apower, " lS -> ", lastState, " cS -> ", currentState);
-  
-  if (currentState !== lastState) {
-    lastState = currentState;
-  
-    let payload = {
-      device: Shelly.getDeviceInfo().id,
-      channel: 1,
-      power: power,
-      threshold: THRESHOLD,
-      state: currentState
-    };
-
-    Shelly.call(
+/// for (let p in status.aenergy) {print(p);}
+  let payload = {
+    power: status.apower,
+    aenergy: status.aenergy.total,
+    state: status.output
+  };
+  print(payload.state);
+  Shelly.call(
       "HTTP.POST",
       {
         url: TARGET_URL,
@@ -35,5 +24,4 @@ Shelly.addEventHandler(function (event) {
         } 
       }
     );
-  }
 });

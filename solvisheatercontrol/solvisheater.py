@@ -4,26 +4,40 @@ import json
 import datetime
 import time
 from flask import Flask, request, jsonify, render_template
-from common import DBPATH, DBFIELDS, DBVALUES
+from common import DBPATH, DBFIELDS, DBVALUES, TABLENAME
 
 
 app = Flask(__name__)
 ipaddress = "192.168.178.137"
+app.previous_state = None
 
 
 @app.route("/power", methods=["POST"])
 def power_event():
     # {'state': 'above', 'threshold': -100, 'power': -1983.9, 'channel': 1, 'device': 'shellypro2pm-ec626090c434'}
     data = request.json
-    assert "power" in data
     currenttime = time.time()
-    power = data["power"]
-    print(f"time {currenttime} -> {power}")
-    connection = sqlite3.connect(DBPATH)
-    cursor = connection.cursor()
-    cursor.execute("INSERT INTO heater VALUES(?,?)", (currenttime, power))
-    connection.commit()
-    return jsonify({"status": "ok"}), 200
+    print(datetime.datetime.fromtimestamp(currenttime), data)
+    assert "power" in data
+    assert "aenergy" in data
+    assert "state" in data
+    data["time"] = currenttime
+    message = ""
+    status = "ok"        
+    if data["state"] != app.previous_state:
+        app.previous_state = data["state"]
+        try:
+            connection = sqlite3.connect(DBPATH)
+            cursor = connection.cursor()
+            cursor.execute(f"INSERT INTO {TABLENAME} VALUES({DBVALUES})", data)
+            connection.commit()
+            print("db write")
+        except Exception as e:
+            status = "error"
+            message = str(e)
+    rval = {"status": status, "message": message}
+    print(rval)
+    return jsonify(rval), 200
 
 
 @app.route("/get", methods=["GET"])
