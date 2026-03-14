@@ -7,7 +7,7 @@ def timestamp(datetimestr):
 
 DBNAME = "solvisheater.db"
 TABLENAME = "solvisheater"
-DBPATH = pathlib.Path.cwd().joinpath(DBNAME)
+DBPATH = pathlib.Path("/opt/solvisheater/").joinpath(DBNAME)
 DBFIELDS = dict(time="REAL", power="REAL", aenergy="REAL", state="INTEGER")
 DBVALUES = ", ".join(f":{key}" for key in DBFIELDS)
 DBCREATE = ", ".join(f"{key} {value}" for key, value in DBFIELDS.items())

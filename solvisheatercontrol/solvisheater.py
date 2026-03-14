@@ -17,7 +17,7 @@ def power_event():
     # {'state': 'above', 'threshold': -100, 'power': -1983.9, 'channel': 1, 'device': 'shellypro2pm-ec626090c434'}
     data = request.json
     currenttime = time.time()
-    print(datetime.datetime.fromtimestamp(currenttime), data)
+    print("I>", datetime.datetime.fromtimestamp(currenttime), data, flush=True)
     assert "power" in data
     assert "aenergy" in data
     assert "state" in data
@@ -29,14 +29,15 @@ def power_event():
         try:
             connection = sqlite3.connect(DBPATH)
             cursor = connection.cursor()
+            print(f"{TABLENAME} -> {DBVALUES} -> {data}", flush=True)
             cursor.execute(f"INSERT INTO {TABLENAME} VALUES({DBVALUES})", data)
             connection.commit()
-            print("db write")
+#            print("db write")
         except Exception as e:
             status = "error"
             message = str(e)
     rval = {"status": status, "message": message}
-    print(rval)
+    print(rval, flush=True)
     return jsonify(rval), 200
 
 
@@ -58,4 +59,4 @@ def index():
     
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5020, debug=True)
+    app.run(host="0.0.0.0", port=5020, debug=False)
