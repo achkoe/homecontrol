@@ -21,7 +21,7 @@ def power_event():
     assert "state" in data
     if data["state"] != app.previous_state:
         app.previous_state = data["state"]
-        # Call get_power in a background thread 
+        # call get_power() in a background thread 
         print("call get_power()", flush=True)
         threading.Thread(target=get_power).start()
     rval = {"status": "ok", "message": ""}
