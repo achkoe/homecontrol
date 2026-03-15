@@ -3,6 +3,7 @@ import requests
 import json
 import datetime
 import time
+import threading
 from flask import Flask, request, jsonify, render_template
 from common import DBPATH, DBFIELDS, DBVALUES, TABLENAME
 
@@ -16,27 +17,14 @@ app.previous_state = None
 def power_event():
     # {'state': 'above', 'threshold': -100, 'power': -1983.9, 'channel': 1, 'device': 'shellypro2pm-ec626090c434'}
     data = request.json
-    currenttime = time.time()
-    print("I>", datetime.datetime.fromtimestamp(currenttime), data, flush=True)
-    assert "power" in data
-    assert "aenergy" in data
+    print("I>", datetime.datetime.fromtimestamp(time.time()), data, flush=True)
     assert "state" in data
-    data["time"] = currenttime
-    message = ""
-    status = "ok"        
     if data["state"] != app.previous_state:
         app.previous_state = data["state"]
-        try:
-            connection = sqlite3.connect(DBPATH)
-            cursor = connection.cursor()
-            print(f"{TABLENAME} -> {DBVALUES} -> {data}", flush=True)
-            cursor.execute(f"INSERT INTO {TABLENAME} VALUES({DBVALUES})", data)
-            connection.commit()
-#            print("db write")
-        except Exception as e:
-            status = "error"
-            message = str(e)
-    rval = {"status": status, "message": message}
+        # Call get_power in a background thread 
+        print("call get_power()", flush=True)
+        threading.Thread(target=get_power).start()
+    rval = {"status": "ok", "message": ""}
     print(rval, flush=True)
     return jsonify(rval), 200
 
@@ -47,7 +35,17 @@ def get_power():
     payload = {"id":1,"method":"Shelly.GetStatus"}
     r = requests.post(url, data=json.dumps(payload))
     r = r.json()
+    # print(json.dumps(r, indent=4))
     r = r["result"]["switch:0"]
+    data = dict(time=time.time(), state=r["output"], power=r["apower"], aenergy=r["aenergy"]["total"])
+    try:
+        connection = sqlite3.connect(DBPATH)
+        cursor = connection.cursor()
+        print(f"{TABLENAME} -> {DBVALUES} -> {data}", flush=True)
+        cursor.execute(f"INSERT INTO {TABLENAME} VALUES({DBVALUES})", data)
+        connection.commit()
+    except Exception as e:
+        print(f"ERROR: {str(e)}")
     r = json.dumps(r, indent=4)
     return r
 
