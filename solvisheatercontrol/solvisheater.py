@@ -11,6 +11,7 @@ from common import DBPATH, DBFIELDS, DBVALUES, TABLENAME
 app = Flask(__name__)
 ipaddress = "192.168.178.137"
 app.previous_state = None
+app.count = 0
 
 
 @app.route("/power", methods=["POST"])
@@ -20,10 +21,13 @@ def power_event():
     print("I>", datetime.datetime.fromtimestamp(time.time()), data, flush=True)
     assert "state" in data
     if data["state"] != app.previous_state:
-        app.previous_state = data["state"]
-        # call get_power() in a background thread 
-        print("call get_power()", flush=True)
-        threading.Thread(target=get_power).start()
+        app.count += 1
+        if app.count > 1:
+            app.previous_state = data["state"]
+            app.cnt = 0
+            # call get_power() in a background thread 
+            print("call get_power()", flush=True)
+            threading.Thread(target=get_power).start()
     rval = {"status": "ok", "message": ""}
     print(rval, flush=True)
     return jsonify(rval), 200

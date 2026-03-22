@@ -1,0 +1,1 @@
+python3 shelly2pm.py run
