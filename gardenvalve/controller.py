@@ -64,7 +64,7 @@ def calculate_rain_in_last_hours(dbpath, number_hours):
     return rain_mm
     
     
-def run(configuration: dict, state: str) -> None:
+def run(configuration: dict, state: str, force: bool) -> None:
     logfile = pathlib.Path(__file__).parent.joinpath(LOGGING_NAME)
     try:
         with logfile.open("r") as fh:
@@ -74,8 +74,11 @@ def run(configuration: dict, state: str) -> None:
     
     now = datetime.datetime.now().isoformat()
     if state == "enable":
-        # using a valve which is normally open
-        valve_close = configuration["rain_mm"] > configuration["minimum_rain_amount_in_millimeters_for_valve_close"]
+        if force:
+            valve_close = True
+        else:
+            # using a valve which is normally open
+            valve_close = configuration["rain_mm"] > configuration["minimum_rain_amount_in_millimeters_for_valve_close"]
     else:
         valve_close = False
     
@@ -174,6 +177,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0], epilog="\n".join(__doc__.splitlines()[1:]), formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--state", dest="state", choices=["enable", "disable"], help="enable or disable valve")
     parser.add_argument("-w", "--write", action="store_true", help="write unit files for systemctl")
+    parser.add_argument("--force", dest="force", action="store_true", help="ignore rain per day")
     args = parser.parse_args()
     configuration = load_configuration()
 
@@ -195,4 +199,4 @@ if __name__ == "__main__":
         write_systemctl_files(configuration)
     else:
         LOGGER.info(f"configuration -> {pformat(configuration)}")
-        run(configuration, args.state)
+        run(configuration, args.state, args.force)
