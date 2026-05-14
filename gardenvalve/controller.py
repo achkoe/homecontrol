@@ -84,8 +84,7 @@ def run(configuration: dict, state: str, force: bool) -> None:
     
     url = "http://{0}/switch/output/turn_{1}".format(configuration["switchaddress"], "on" if valve_close else "off")
     r = requests.post(url)
-    print(url)
-    print(r.status_code)
+    LOGGER.critical(f"{url} -> {r.status_code}")
     
     logrecord.appendleft(dict(close=valve_close, rain_mm=configuration["rain_mm"], time=now, status=r.status_code))
     with logfile.open("w") as fh:
@@ -183,8 +182,8 @@ if __name__ == "__main__":
 
     # check keys of configuration
     keys = sorted(list(configuration.keys()))
-    print(keys)
-    print(CONFIGURATION_KEYS)
+    LOGGER.debug(keys)
+    LOGGER.debug(CONFIGURATION_KEYS)
     if keys != CONFIGURATION_KEYS:
         die("ERROR: configuration keys does not match")
     for item in configuration["on_run_times"]:
@@ -193,7 +192,6 @@ if __name__ == "__main__":
             die("ERROR: keys of 'on_run_times' in configuration does not match")
 
     configuration = setup(configuration)
-    LOGGER.info(pformat(configuration))
 
     if args.write is True:
         write_systemctl_files(configuration)
