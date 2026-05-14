@@ -22,7 +22,6 @@ def index():
 @app.route("/toggle", methods=("POST", ))
 def toggle():
     state = request.get_json()
-    print(state)
     onoff = "on" if state["relay"] == "On" else "off"
     args = shelly_args + [f"{shelly_url}?turn={onoff}"]
     cp = subprocess.run(args, capture_output=True)
