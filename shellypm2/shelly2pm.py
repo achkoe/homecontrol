@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 import argparse
 import pathlib
@@ -5,7 +6,11 @@ import time
 import json
 import datetime
 import requests
+from dotenv import dotenv_values
 
+loglevel = int(dotenv_values(".env").get("LOGLEVEL", logging.CRITICAL))
+logging.basicConfig(format="%(levelname)s:%(asctime)s:%(lineno)d:%(message)s", level=loglevel)
+LOGGER = logging.getLogger(__name__)
 
 DEBUG = False
 IPADDRESS = "192.168.178.137" 
@@ -35,10 +40,10 @@ def create_db(delete_db: bool):
     cursor = connection.cursor()
     if delete_db is True:
         command = f"DROP TABLE {TABLENAME}"
-        print(command)
+        LOGGER.critical(command)
         cursor.execute(command)
     command = f"CREATE TABLE {TABLENAME} ({DBCREATE})"
-    print(command)
+    LOGGER.critical(command)
     cursor.execute(command)
     # create trigger to delete items older than 1 year
     command = f"""CREATE TRIGGER IF NOT EXISTS deletelastyear AFTER INSERT ON {TABLENAME}
@@ -46,7 +51,7 @@ def create_db(delete_db: bool):
                    DELETE FROM {TABLENAME} WHERE (julianday('now') - julianday(time, 'unixepoch')) > 365;
                    END
                    """
-    print(command)
+    LOGGER.critical(command)
     cursor.execute(command)
     connection.commit()
 
@@ -79,7 +84,7 @@ def run():
         r = r.json()
         r = r["result"]["switch:0"]
         data = dict(time=time.time(), state=r["output"], power=r["apower"], aenergy=r["aenergy"]["total"])
-        print(data, flush=True)
+        LOGGER.debug(data)
         
         if previous_state != data["state"] or abs(data["power"] - previous_power) > POWER_DELTA or data["time"] - previous_time > TIME_DELTA:
             previous_state = data["state"]
@@ -88,11 +93,11 @@ def run():
             try:
                 connection = sqlite3.connect(DBPATH)
                 cursor = connection.cursor()
-                print(f"{TABLENAME} -> {DBVALUES} -> {data}", flush=True)
+                LOGGER.info(f"{TABLENAME} -> {DBVALUES} -> {data}")
                 cursor.execute(f"INSERT INTO {TABLENAME} VALUES({DBVALUES})", data)
                 connection.commit()
             except Exception as e:
-                print(f"ERROR: {str(e)}")
+                LOGGER.critical(f"ERROR: {str(e)}")
         time.sleep(TIME_INTERVAL)
 
 
