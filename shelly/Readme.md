@@ -1,6 +1,6 @@
 # Installation
 
-Presuming `shellyproxy` is clonden into folder `~/homecontrol/shelly` and you are in this folder.
+Presuming `shellyproxy` is cloned into folder `~/homecontrol/shelly` and you are in this folder.
 
 Create a file `.env` with `USERNAME` and `PASSWORD`
 ```
