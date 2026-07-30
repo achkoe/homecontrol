@@ -1,0 +1,120 @@
+// ======================================================
+// Shelly Plug M Gen3
+// Power Supervisor with MQTT Events
+// ======================================================
+
+
+// ---------------- Configuration -----------------------
+
+const DEVICE_ID = "plug_cistern";
+const MQTT_TOPIC = "shelly/cistern/events";
+const POWER_THRESHOLD = 50;       // Watt
+//const T_ON = 35 * 60 * 1000;       // 35 minutes
+const T_ON = 1 * 60 * 1000;       // 1 minute
+const CHECK_INTERVAL = 10000;      // 10 seconds
+
+
+// ---------------- internal variables -------------------
+
+let state = "unknown";
+let p_on_since = null;
+
+// ------------------------------------------------------
+// helpper functions
+// ------------------------------------------------------
+
+function unixTime() {
+    return Math.floor(Date.now() / 1000);
+}
+
+
+function sendEvent(event, power) {
+    let payload = {
+        device: DEVICE_ID,
+        event: event,
+        power: Number(power.toFixed(1)),
+        threshold: POWER_THRESHOLD,
+        state: state,
+        timestamp: unixTime()
+    };
+    MQTT.publish(
+        MQTT_TOPIC,
+        JSON.stringify(payload)
+    );
+    print(JSON.stringify(payload));
+}
+
+// ------------------------------------------------------
+// relay control
+// ------------------------------------------------------
+
+function switchOn(onoff) {
+    Shelly.call("Switch.Set", {id: 0, on: onoff});
+    print("Relay " + onoff);
+}
+// ------------------------------------------------------
+// state machine
+// ------------------------------------------------------
+
+function processPower(power) {
+    let newState = (power >= POWER_THRESHOLD) ? "p_on": "p_off";
+    if (state === "unknown") {
+        state = newState;
+        if (state === "p_on") {
+            p_on_since = Date.now();
+        }
+        return;
+    }
+    // p_off -> p_on
+    if (state === "p_off" && newState === "p_on") {
+        state = "p_on";
+        p_on_since = Date.now();
+        sendEvent("event_on", power);
+    }
+    // p_on -> p_off
+    else if (state === "p_on" && newState === "p_off") {
+        state = "p_off";
+        p_on_since = null;
+        sendEvent("event_off", power);
+    }
+}
+
+// ------------------------------------------------------
+// State Handler
+// ------------------------------------------------------
+
+Shelly.addStatusHandler(
+    function(status) {
+        if (!status.delta)
+            return;
+        if (!status.delta.apower)
+            return;
+        let power = status.delta.apower;
+        processPower(power);
+    }
+);
+
+// ------------------------------------------------------
+// Timer for t_on
+// ------------------------------------------------------
+
+Timer.set(
+    CHECK_INTERVAL, true, function() {
+        if (state !== "p_on")
+            return;
+        if (p_on_since === null)
+            return;
+        if ((Date.now() - p_on_since) >= T_ON) {
+            switchOn(false);
+            // deactivate forever
+            p_on_since = null;
+        }
+    }
+);
+
+// ------------------------------------------------------
+// Start
+// ------------------------------------------------------
+
+switchOn(true);
+print("Shelly Power Monitor startet");
