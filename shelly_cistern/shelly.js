@@ -98,7 +98,7 @@ Shelly.addStatusHandler(
 // Timer for t_on
 // ------------------------------------------------------
 
-Timer.set(
+/* Timer.set(
     CHECK_INTERVAL, true, function() {
         if (state !== "p_on")
             return;
@@ -111,7 +111,7 @@ Timer.set(
         }
     }
 );
-
+ */
 // ------------------------------------------------------
 // Start
 // ------------------------------------------------------
