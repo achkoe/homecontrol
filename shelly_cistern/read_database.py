@@ -60,8 +60,9 @@ if __name__ == "__main__":
         item["time"] = datetime.datetime.fromtimestamp(item["time"])
         print("{0:3} | {1} | {2:5.1f}".format(index, item["time"], item["power"]))
         
-    for index in range(3):
-        print("{1} -> {0}".format(*rlist[-index]))
+    for index in range(5):
+        item = rlist[-index]
+        print("{0:4} -> {1:7.1f}s : {2:4.1f}min".format(item[1], item[0], item[0] / 60))
         
     maxtime = rlist[-1]
-    print(f"Maximum on time is {maxtime[0]} seconds, {maxtime[0] / 60} minutes (at index {maxtime[1]})")
+    print(f"Maximum on time is {maxtime[0]} seconds, {maxtime[0] / 60:4.1f} minutes (at index {maxtime[1]})")

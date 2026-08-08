@@ -10,7 +10,7 @@ const DEVICE_ID = "plug_cistern";
 const MQTT_TOPIC = "shelly/cistern/events";
 const POWER_THRESHOLD = 50;       // Watt
 //const T_ON = 35 * 60 * 1000;       // 35 minutes
-const T_ON = 1 * 60 * 1000;       // 1 minute
+const T_ON = 0.5 * 60 * 1000;       // 30 seconds
 const CHECK_INTERVAL = 10000;      // 10 seconds
 
 
@@ -29,19 +29,25 @@ function unixTime() {
 
 
 function sendEvent(event, power) {
+    try {
+      power = Number(power.toFixed(1));
+    } catch (error) {
+      print(error);
+    }
     let payload = {
         device: DEVICE_ID,
         event: event,
-        power: Number(power.toFixed(1)),
+        power: power,
         threshold: POWER_THRESHOLD,
         state: state,
         timestamp: unixTime()
     };
+    print("B:" + JSON.stringify(payload));
     MQTT.publish(
         MQTT_TOPIC,
         JSON.stringify(payload)
     );
-    print(JSON.stringify(payload));
+
 }
 
 // ------------------------------------------------------
@@ -85,9 +91,8 @@ function processPower(power) {
 
 Shelly.addStatusHandler(
     function(status) {
+        // print("A:" + JSON.stringify(status));
         if (!status.delta)
-            return;
-        if (!status.delta.apower)
             return;
         let power = status.delta.apower;
         processPower(power);
@@ -98,20 +103,20 @@ Shelly.addStatusHandler(
 // Timer for t_on
 // ------------------------------------------------------
 
-/* Timer.set(
+Timer.set(
     CHECK_INTERVAL, true, function() {
         if (state !== "p_on")
             return;
         if (p_on_since === null)
             return;
         if ((Date.now() - p_on_since) >= T_ON) {
+            sendEvent("disable", 0);
             switchOn(false);
             // deactivate forever
             p_on_since = null;
         }
     }
 );
- */
 // ------------------------------------------------------
 // Start
 // ------------------------------------------------------
