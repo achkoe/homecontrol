@@ -17,7 +17,6 @@ const CHECK_INTERVAL = 10000;      // 10 seconds
 // ---------------- internal variables -------------------
 
 let state = "unknown";
-let sstate = 0;
 let p_on_since = null;
 
 // ------------------------------------------------------
@@ -77,14 +76,12 @@ function processPower(power) {
         state = "p_on";
         p_on_since = Date.now();
         sendEvent("event_on", power);
-        sstate = 2;
     }
     // p_on -> p_off
     else if (state === "p_on" && newState === "p_off") {
         state = "p_off";
         p_on_since = null;
         sendEvent("event_off", power);
-        sstate = 2;
     }
 }
 
@@ -107,18 +104,7 @@ Shelly.addStatusHandler(
 // ------------------------------------------------------
 
 Timer.set(
-    CHECK_INTERVAL, true, function() {
-      
-        if (sstate > 0) {
-          Shelly.call("Switch.GetStatus", { id: 0 }, function (result, error_code, error_message) {
-            if (error_code === 0) {
-                    print("Current power: " + result.apower + " W");
-                    sendEvent(state, result.apower);
-                }
-          });
-          sstate -= 1;
-        }
-      
+    CHECK_INTERVAL, true, function() {      
         if (state !== "p_on")
             return;
         if (p_on_since === null)
