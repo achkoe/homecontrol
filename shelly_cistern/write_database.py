@@ -4,15 +4,19 @@ import sqlite3
 from types import SimpleNamespace
 import json
 from datetime import datetime
+import time
+import multiprocessing
 import paho.mqtt.enums as enums
 import paho.mqtt.client as mqtt
-from common import DBPATH, DBFIELDS, DBVALUES
+from dotenv import dotenv_values
 from sendemail import email
+from common import DBPATH, DBFIELDS, DBVALUES
 
 
 BROKER = "127.0.0.1"
 PORT = 1883
 TOPIC = "shelly/cistern/events"
+IPADDRESS = dotenv_values(".env").get("shelly_ip")
 
 
 def on_connect(client, userdata, flags, rc, properties):
