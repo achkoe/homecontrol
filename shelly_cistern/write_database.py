@@ -6,18 +6,32 @@ import json
 from datetime import datetime
 import time
 import multiprocessing
+import requests
 import paho.mqtt.enums as enums
 import paho.mqtt.client as mqtt
 from dotenv import dotenv_values
 from sendemail import email
-from common import DBPATH, DBFIELDS, DBVALUES
+from common import DBPATH, DBFIELDS, DBVALUES, VERSION
 
 
 BROKER = "127.0.0.1"
 PORT = 1883
 TOPIC = "shelly/cistern/events"
-IPADDRESS = dotenv_values(".env").get("shelly_ip")
+URI = dotenv_values(".env").get("shelly_uri")
+WAITTIME = 5
 
+
+def get_power():
+    connection = sqlite3.connect(DBPATH, detect_types=sqlite3.PARSE_DECLTYPES)
+    cursor = connection.cursor()
+    for _ in range(2):
+        r = requests.get(URI)
+        if r.status_code == 200:
+            print(f"{_}: {r.status_code} | {r.json().get('apower', -1)} | {time.time()}")
+            cursor.execute("INSERT OR IGNORE INTO power VALUES (?, ?)", (time.time(), r.json().get("apower", -1)))
+            connection.commit()
+        time.sleep(WAITTIME)
+        
 
 def on_connect(client, userdata, flags, rc, properties):
     if rc == 0:
@@ -41,6 +55,14 @@ def on_message(client, userdata, msg):
         userdata.cursor.execute("INSERT OR IGNORE INTO power VALUES (?, ?)", (data["timestamp"], data["power"]))
         userdata.connection.commit()
         
+        if userdata.process is None:
+            userdata.process = multiprocessing.Process(target=get_power)
+            userdata.process.start()
+        else:
+            if not userdata.process.is_alive():
+                userdata.process.join()
+                userdata.process = None
+        
         if data['event'] == "disable":
             subject = "Warning: water pump disabled"
             message = f"Water pump disabled at {timestamp:%Y-%m-%d %H:%M:%S}.\n" \
@@ -52,6 +74,7 @@ def on_message(client, userdata, msg):
 
 
 if __name__ == '__main__':
+    print(f"write_database {VERSION}")
     connection = sqlite3.connect(DBPATH, detect_types=sqlite3.PARSE_DECLTYPES)
     cursor = connection.cursor()
     s = ",".join(f"{key} {DBFIELDS[key]}" for key in DBFIELDS)    
@@ -68,7 +91,7 @@ if __name__ == '__main__':
     connection.commit()
     
     # --- MQTT stuff ---
-    userdata = SimpleNamespace(cursor=cursor, connection=connection)
+    userdata = SimpleNamespace(cursor=cursor, connection=connection, process=None)
     client = mqtt.Client(enums.CallbackAPIVersion(2), userdata=userdata) 
     client.on_connect = on_connect
     client.on_message = on_message

@@ -1,6 +1,6 @@
 [Unit]
 Description=Read and archive data from a Sheely at cistern
-After=After=mosquitto.service
+# After=After=mosquitto.service
 
 [Service]
 User=root
