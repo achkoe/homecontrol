@@ -11,7 +11,7 @@ allows for controlling the valve using http.
 
 ## Controller
 
-The script `controller.py` is used to drive the esp32 board which switches the garden valve off and on. It uses the database from `weatherstation`, , see https://github.com/achkoe/weatherstation
+The script `controller.py` is used to drive the esp32 board which switches the garden valve off and on. It uses the database from `weatherstation`, see https://github.com/achkoe/weatherstation
 
 This script is called using systemctl timers.
 The service files and timer files are generated using the option `--write`.
@@ -24,7 +24,7 @@ The keys in `configuration.json`are:
   - `for`: the duration in minutes how long the relay is on
 - `calculate_rain_amount_over_hours`: the time span used to calculate rain amount
 - `minimum_rain_amount_in_millimeters_for_valve_close`: the minimum rain amount for which the valve is closed
-- `switchaddress`: the ip address of the switch
+- `switchaddress`: the ip address of the esp32 board
 - `weatherstation`: the path to project `weatherstation`
 
 
