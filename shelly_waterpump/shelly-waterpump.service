@@ -1,0 +1,13 @@
+[Unit]
+Description=Read and archive data from a Shelly monitoring power of water pump of a cistern
+# After=After=mosquitto.service
+
+[Service]
+User=root
+WorkingDirectory=/home/pi/homecontrol/shelly_waterpump
+ExecStart=/usr/bin/bash -c 'cd /home/pi/homecontrol/shelly_waterpump && source /home/pi/weatherstation/.venv/bin/activate && python write_database.py'
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
