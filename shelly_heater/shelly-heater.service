@@ -1,9 +1,9 @@
 [Unit]
-Description=Shelly2PM Log
+Description=Shelly Heater Log
 
 [Service]
 User=root
-WorkingDirectory=/home/pi/homecontrol/shellypm2
+WorkingDirectory=/home/pi/homecontrol/shelly_heater
 ExecStart=bash start.sh
 Restart=always
 RestartSec=3
